@@ -1,0 +1,61 @@
+[project]
+name = "hoi-pose-estimation"
+version = "0.1.0"
+description = "Hand-Object Interaction Pose Estimation with Transformers (HaMeR) on DexYCB"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "Academic use only"}
+authors = [{name = "PoliTo Advanced ML 2026-27 Team"}]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Education",
+    "Programming Language :: Python :: 3.10",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+    "torch>=2.1.0",
+    "torchvision>=0.16.0",
+    "numpy>=1.24.0",
+    "opencv-python-headless>=4.8.0",
+    "pillow>=10.0.0",
+    "omegaconf>=2.3.0",
+    "tqdm>=4.66.0",
+    "matplotlib>=3.7.0",
+    "scipy>=1.11.0",
+    "pyyaml>=6.0",
+    "gdown>=4.7.0",
+    "trimesh>=3.23.0",
+    "pyrender>=0.1.45",
+    "smplx>=0.1.28",
+    "timm>=1.0.31",
+]
+
+[project.optional-dependencies]
+pytorch3d = ["pytorch3d>=0.7.4"]
+
+[tool.uv]
+dev-dependencies = [
+    "pytest>=9.2.0",
+    "pytest-cov>=7.1.0",
+    "ruff>=0.17.6",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+select = ["E", "F", "I", "W", "UP", "B", "C4", "PTH"]
+ignore = ["E501"]
+fix = true
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short"
