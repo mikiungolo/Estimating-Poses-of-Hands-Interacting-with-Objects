@@ -25,43 +25,35 @@ Hand-Object Interaction (HOI) pose estimation with Transformers (HaMeR) on DexYC
 ### Prerequisites
 - Google account (Colab + Drive)
 
-### 1. Open `setup_colab.ipynb` in Colab
+### 1. Open `main.ipynb` in Colab
 ```bash
 # Option A: Upload notebook file
-# File → Upload notebook → select setup_colab.ipynb
+# File → Upload notebook → select main.ipynb
 
 # Option B: Open directly (replace YOUR_USERNAME)
-https://colab.research.google.com/github/YOUR_USERNAME/Estimating-Poses-of-Hands-Interacting-with-Objects/blob/main/setup_colab.ipynb
+https://colab.research.google.com/github/YOUR_USERNAME/Estimating-Poses-of-Hands-Interacting-with-Objects/blob/main/main.ipynb
 ```
 
 ### 2. Run All Cells
 ```bash
 # In Colab: Runtime → Run all
 ```
-The notebook automatically:
-1. Installs `uv` (fast package manager)
-2. Clones repository
-3. Installs dependencies from `pyproject.toml`
-4. Mounts **Google Drive** (authorize when prompted)
-5. Creates persistent folders on Drive:
-   ```
-   /content/drive/MyDrive/HOI_Project/
-   ├── checkpoints/     # Model weights (persistent!)
-   ├── dataset/         # DexYCB dataset
-   └── logs/            # TensorBoard logs
-   ```
-6. Downloads DexYCB subset from Google Drive
-7. Verifies `src/` imports and config
+The single notebook runs the complete workflow:
+1. **Setup** - Installs `uv`, clones repo, installs deps, mounts Drive, creates persistent folders, downloads dataset
+2. **Data Exploration** - Inspects DexYCB, visualizes batches, verifies active object logic
+3. **HaMeR Pretrained Inference** - Evaluates on DexYCB (Table 1 metrics)
+4. **HaMeR Fine-tuning** - Trains HaMeR on DexYCB
+5. **HOI Training** - Trains full hand-object interaction model
+6. **Evaluation** - Computes Table 2 metrics + qualitative visualizations (Figure 4)
 
-### 3. Run Experiments
-Open notebooks in order:
-| Notebook | Description |
-|----------|-------------|
-| `notebooks/01_data_exploration.ipynb` | Data inspection, visualize batches |
-| `notebooks/02_hamer_inference.ipynb` | HaMeR pretrained eval (Table 1) |
-| `notebooks/03_hamer_training.ipynb` | HaMeR fine-tuning on DexYCB |
-| `notebooks/04_hoi_training.ipynb` | HOI model training |
-| `notebooks/05_evaluation.ipynb` | Final evaluation + visualizations |
+### Persistent Storage (Google Drive)
+All checkpoints, dataset, and logs persist on Drive:
+```
+/content/drive/MyDrive/HOI_Project/
+├── checkpoints/     # Model weights (persistent!)
+├── dataset/         # DexYCB dataset
+└── logs/            # TensorBoard logs
+```
 
 ---
 
@@ -73,9 +65,9 @@ All hyperparameters centralized:
 - `hamer.*` - HaMeR architecture
 - `hoi.*` - HOI model architecture
 - `train.hamer.*` / `train.hoi.*` - Training hyperparameters
-- `dexycb_drive_file_id` - Dataset Drive file ID
+- `dexycb_drive_file_id` - Dataset Drive file ID (hardcoded)
 
-**Colab:** Drive paths auto-configured in `setup_colab.ipynb`.
+**Colab:** Drive paths configured in notebook.
 
 ---
 
@@ -93,12 +85,7 @@ All hyperparameters centralized:
 │   ├── processed/           # Cache
 │   └── splits/              # COMMITTED - split indices
 ├── logs/                    # GITIGNORED
-├── notebooks/               # Colab experiments
-│   ├── 01_data_exploration.ipynb
-│   ├── 02_hamer_inference.ipynb
-│   ├── 03_hamer_training.ipynb
-│   ├── 04_hoi_training.ipynb
-│   └── 05_evaluation.ipynb
+├── main.ipynb               # Single Colab notebook (complete workflow)
 ├── scripts/
 │   └── download_dataset.py  # Download from Drive
 ├── src/                     # Python package (importable)
@@ -111,8 +98,7 @@ All hyperparameters centralized:
 ├── .python-version          # 3.10
 ├── README.md
 ├── pyproject.toml           # Dependencies + tool config
-├── uv.lock                  # Lockfile (COMMITTED)
-└── setup_colab.ipynb        # Colab setup (run once per session)
+└── uv.lock                  # Lockfile (COMMITTED)
 ```
 
 ---
@@ -123,7 +109,7 @@ All hyperparameters centralized:
 - **Always save to Google Drive**: `/content/drive/MyDrive/HOI_Project/checkpoints/`
 - Config `checkpoint_dir` points to Drive
 - `save_every: 5` in config → checkpoint every 5 epochs
-- **Auto-resume** on next notebook start
+- **Auto-resume** on next session
 
 ### 12h Timeout - Keep Alive
 To prevent disconnect after 12h inactivity:
@@ -215,10 +201,9 @@ uv run mypy src/
 
 ## Development Notes
 
-### Architecture: `src/` + Notebooks
+### Architecture: `src/` + `main.ipynb`
 - `src/` = **reusable package** (logic, models, metrics, utils)
-- `notebooks/` = **experiment entry points** (orchestration, visualization)
-- Notebooks import from `src`: `from src.data import DexYCBDataset`
+- `main.ipynb` = **single entry point** (complete workflow)
 
 ### Active Object Definition
 > "An active object is strictly defined as an object in direct contact with the hand in a given frame. Frames without active contact must be identified and handled accordingly."
