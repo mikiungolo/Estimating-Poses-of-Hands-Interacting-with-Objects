@@ -22,6 +22,20 @@ def get_drive_url(config_path: str = "configs/config.yaml") -> str:
     return f"https://drive.google.com/uc?id={file_id}"
 
 
+def is_dataset_extracted(output_dir: str) -> bool:
+    """Check if dataset appears to be already extracted."""
+    if not os.path.isdir(output_dir):
+        return False
+    try:
+        # Check if directory has any files (not just specific extensions)
+        files = os.listdir(output_dir)
+        # Ignore the zip file itself
+        files = [f for f in files if not f.endswith('.zip')]
+        return len(files) > 0
+    except OSError:
+        return False
+
+
 def main():
     parser = argparse.ArgumentParser(description="Download DexYCB subset from Google Drive")
     parser.add_argument("--output", default="./dataset/raw", help="Output directory")
@@ -32,25 +46,27 @@ def main():
     os.makedirs(args.output, exist_ok=True)
     output_path = os.path.join(args.output, "dexycb_subset.zip")
 
+    # Check if already extracted
+    if not args.force and is_dataset_extracted(args.output):
+        print(f"Dataset already extracted in {args.output}")
+        return
+
+    # Check if zip already downloaded
     if os.path.exists(output_path) and not args.force:
-        print(f"File already exists: {output_path}")
-        extracted = any(fname.endswith(('.pkl', '.json', '.npy', '.jpg', '.png'))
-                       for fname in os.listdir(args.output))
-        if extracted:
-            print("Dataset already extracted.")
-            return
+        print(f"Zip already exists: {output_path}, extracting...")
+    else:
+        drive_url = get_drive_url(args.config)
+        print("Downloading from Google Drive...")
+        print(f"URL: {drive_url}")
+        print(f"Destination: {output_path}")
 
-    drive_url = get_drive_url(args.config)
-    print("Downloading from Google Drive...")
-    print(f"URL: {drive_url}")
-    print(f"Destination: {output_path}")
+        try:
+            gdown.download(drive_url, output_path, quiet=False, fuzzy=True)
+        except Exception as e:
+            print(f"Download error: {e}", file=sys.stderr)
+            sys.exit(1)
 
-    try:
-        gdown.download(drive_url, output_path, quiet=False, fuzzy=True)
-    except Exception as e:
-        print(f"Download error: {e}", file=sys.stderr)
-        sys.exit(1)
-
+    # Extract if zip
     if output_path.endswith(".zip"):
         print("Extracting...")
         try:
