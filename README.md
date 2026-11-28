@@ -10,64 +10,91 @@ Hand-Object Interaction (HOI) pose estimation with Transformers (HaMeR) on DexYC
 
 **Optional Extension (choose one):**
 - Contact Pose Estimation (ContactNet)
-- Multi-view Pose Estimation  
+- Multi-view Pose Estimation
 - Knowledge Distillation
 
 ---
 
 ## Team
 - Michelangelo Ungolo (s349109)
+- Matteo Gaffoglio (s......)
+- ...
+
+---
+
+## How we work
+
+| What | Where | Notes |
+|------|-------|-------|
+| Code | **GitHub** (this repo) | Everyone has their own clone and works on their own branch, then opens a pull request to `main` |
+| Data, MANO, checkpoints, outputs | **Your own Google Drive**, `MyDrive/HOI_Project` | Created and filled by `main.ipynb`; each member has their own copy |
+| GPU runs | **Google Colab** | Only `main.ipynb`; Colab wipes its disk at every disconnection |
+| Metrics and curves | **Weights & Biases** | One run per experiment, visible to the whole team |
+
+Workflow:
+1. Edit the `.py` files on your PC (e.g. VS Code), commit and push to your branch.
+2. On Colab, set `BRANCH` in cell 1.1 and re-run it (`git pull`).
+3. Run the sections you need. Checkpoints and outputs go to your Drive, metrics to W&B.
+
+Never commit the dataset, `MANO_*.pkl`, checkpoints or W&B files (see `.gitignore`).
 
 ---
 
 ## Quick Start (Google Colab)
 
-### Prerequisites
-- Google account (Colab + Drive)
+### Prerequisites (once per member)
+- Google account (Colab + Drive) with ~16 GB free on Drive (dataset ~13.9 GB + checkpoints)
+- MANO model: register at https://mano.is.tue.mpg.de, download *Models & Code* and upload
+  `mano_v1_2/models/MANO_RIGHT.pkl` and `MANO_LEFT.pkl` into `MyDrive/HOI_Project/mano/`
+- W&B account: copy your API key from https://wandb.ai/authorize into the Colab Secrets
+  (key icon on the left) as `WANDB_API_KEY`, with notebook access enabled
 
-### 1. Open `main.ipynb` in Colab
-```bash
-# Option A: Upload notebook file
-# File → Upload notebook → select main.ipynb
+### Run
+1. Open `main.ipynb` in Colab: File -> Open notebook -> GitHub -> paste the repo URL.
+2. Runtime -> Change runtime type -> **T4 GPU**.
+3. Run the **Setup** section (1.1 -> 1.6):
+   - clones/updates the repo and installs the dependencies of `pyproject.toml`
+   - mounts **your** Drive and creates `MyDrive/HOI_Project`
+   - **first run ever:** downloads DexYCB subject-01, calibration and YCB models (~13.9 GB) into your Drive
+   - **every session:** copies the archives to the Colab disk and extracts them in `/content/dexycb` (~10-15 min)
+   - logs in to W&B
+4. Run the sections you need (2 -> 6).
 
-# Option B: Open directly (replace YOUR_USERNAME)
-https://colab.research.google.com/github/YOUR_USERNAME/Estimating-Poses-of-Hands-Interacting-with-Objects/blob/main/main.ipynb
+### Your Google Drive
+```
+MyDrive/HOI_Project/
+├── dataset/       # 20200709-subject-01.tar.gz, calibration.tar.gz, models.tar.gz
+├── mano/          # MANO_RIGHT.pkl, MANO_LEFT.pkl (licence: never on GitHub)
+├── checkpoints/   # one sub-folder per model: hamer_pretrained/, hamer_finetuned/, hoi_model/
+├── logs/
+└── outputs/       # figures and tables for the report
 ```
 
-### 2. Run All Cells
-```bash
-# In Colab: Runtime → Run all
+### Local data on Colab (`/content/dexycb`, rebuilt every session)
 ```
-The single notebook runs the complete workflow:
-1. **Setup** - Installs `uv`, clones repo, installs deps, mounts Drive, creates persistent folders, downloads dataset
-2. **Data Exploration** - Inspects DexYCB, visualizes batches, verifies active object logic
-3. **HaMeR Pretrained Inference** - Evaluates on DexYCB (Table 1 metrics)
-4. **HaMeR Fine-tuning** - Trains HaMeR on DexYCB
-5. **HOI Training** - Trains full hand-object interaction model
-6. **Evaluation** - Computes Table 2 metrics + qualitative visualizations (Figure 4)
-
-### Persistent Storage (Google Drive)
-All checkpoints, dataset, and logs persist on Drive:
+20200709-subject-01/<sequence>/meta.yml                       # objects, grasped object, hand side
+20200709-subject-01/<sequence>/<camera serial>/color_XXXXXX.jpg
+                                              aligned_depth_to_color_XXXXXX.png
+                                              labels_XXXXXX.npz   # seg, pose_y, pose_m, joint_3d, joint_2d
+calibration/                                                   # intrinsics, extrinsics, MANO betas
+models/                                                        # YCB object meshes
 ```
-/content/drive/MyDrive/HOI_Project/
-├── checkpoints/     # Model weights (persistent!)
-├── dataset/         # DexYCB dataset
-└── logs/            # TensorBoard logs
-```
+100 sequences x 8 cameras, ~58k frames. Units in the labels are **meters** (metrics in mm).
 
 ---
 
 ## Configuration
 
 ### Main Config: `configs/config.yaml`
-All hyperparameters centralized:
+All hyperparameters and paths centralized:
+- `drive_root`, `drive_dataset_dir`, `mano_dir`, `checkpoint_dir`, `log_dir`, `output_dir` - your Drive
+- `data_root` - local extraction folder on the Colab disk
+- `dexycb.files` - official DexYCB Google Drive file IDs (downloaded by `scripts/download_dataset.py`)
+- `wandb.*` - W&B project / entity / mode
 - `data.*` - Batch size, augmentations, split ratios
 - `hamer.*` - HaMeR architecture
 - `hoi.*` - HOI model architecture
-- `train.hamer.*` / `train.hoi.*` - Training hyperparameters
-- `dexycb_drive_file_id` - Dataset Drive file ID (hardcoded)
-
-**Colab:** Drive paths configured in notebook.
+- `train.hamer.*` / `train.hoi.*` - Training hyperparameters, `checkpoint_subdir` per model
 
 ---
 
@@ -76,18 +103,11 @@ All hyperparameters centralized:
 ```
 ├── configs/
 │   └── config.yaml          # Single config file
-├── checkpoints/             # GITIGNORED - on Google Drive
-│   ├── hamer_pretrained/
-│   ├── hamer_finetuned/
-│   └── hoi_model/
-├── dataset/                 # GITIGNORED (except splits/)
-│   ├── raw/                 # Dataset from Drive
-│   ├── processed/           # Cache
+├── dataset/
 │   └── splits/              # COMMITTED - split indices
-├── logs/                    # GITIGNORED
 ├── main.ipynb               # Single Colab notebook (complete workflow)
 ├── scripts/
-│   └── download_dataset.py  # Download from Drive
+│   └── download_dataset.py  # Drive download + local extraction + MANO check
 ├── src/                     # Python package (importable)
 │   ├── data/                # Dataset, transforms, splits
 │   ├── models/              # HaMeR, HOI, losses
@@ -106,15 +126,14 @@ All hyperparameters centralized:
 ## Key Colab Points
 
 ### Persistent Checkpoints (Required)
-- **Always save to Google Drive**: `/content/drive/MyDrive/HOI_Project/checkpoints/`
-- Config `checkpoint_dir` points to Drive
-- `save_every: 5` in config → checkpoint every 5 epochs
-- **Auto-resume** on next session
+- Checkpoints are saved on **your** Drive: `MyDrive/HOI_Project/checkpoints/<checkpoint_subdir>/`
+- Each model has its own sub-folder (`train.*.checkpoint_subdir`), so a run never resumes from another model
+- `save_every: 5` -> checkpoint every 5 epochs, auto-resume on the next session
 
 ### 12h Timeout - Keep Alive
 To prevent disconnect after 12h inactivity:
 ```javascript
-// Browser console (F12) → paste:
+// Browser console (F12) -> paste:
 setInterval(() => {
   const btn = document.querySelector('#connect-button');
   if (btn) btn.click();
@@ -124,38 +143,34 @@ setInterval(() => {
 Or install Chrome extension **"Colab Keep Alive"**.
 
 ### GPU Variability
-Colab free tier: T4 / K80 / P100 (random assignment).
+Colab free tier: T4 (random assignment, availability not guaranteed).
 - `batch_size: 32` in config (reduce if OOM)
 - `mixed_precision: true` + `grad_accum_steps: 2` for stability
 - `num_workers: 0` required (multiprocessing doesn't work)
 
 ---
 
-## Experiment Tracking: TensorBoard (Built-in)
+## Experiment Tracking: Weights & Biases
 
-**Why TensorBoard:** Zero setup, built into PyTorch, works in Colab.
+**Why W&B:** used in the course labs, one shared place for the runs of every team member.
 
 **Usage:**
 ```python
-from torch.utils.tensorboard import SummaryWriter
+import wandb
 
-writer = SummaryWriter(log_dir=config.log_dir)
-writer.add_scalar("Loss/train", loss, epoch)
-writer.add_scalar("MPJPE/val", mpjpe, epoch)
-writer.add_figure("Predictions", fig, epoch)
-writer.close()
-```
-
-**In Colab:** Load TensorBoard extension:
-```python
-%load_ext tensorboard
-%tensorboard --logdir /content/drive/MyDrive/HOI_Project/logs
+run = wandb.init(project=config.wandb.project, entity=config.wandb.entity,
+                 mode=config.wandb.mode, name="hoi-lr5e-5-bs32", config=dict(config.train.hoi))
+wandb.log({"train/loss": loss, "val/mpjpe": mpjpe}, step=epoch)
+wandb.log({"predictions": wandb.Image(fig)})
+run.finish()
 ```
 
 **What to Log:**
 - Train/val loss per epoch
 - All Table 1 & 2 metrics (MPJPE, MPVPE, ADD, AUC, RR, PA)
 - Qualitative visualizations (overlay predictions)
+
+Name runs clearly (`<model>-<main hyperparameters>`) and set `wandb.entity` to the team name.
 
 ---
 
@@ -193,9 +208,13 @@ uv run mypy src/
 | `trimesh`, `pyrender` | **Mesh rendering for Figure 4** |
 | `gdown` | Google Drive download |
 | `smplx` | MANO model |
-| `pytorch3d` | Chamfer distance, mesh ops |
+| `timm` | ViT backbone |
+| `wandb` | Experiment tracking |
+| `pytorch3d` | Chamfer distance, mesh ops (optional) |
 
 **Dependency Management:** Only `pyproject.toml` + `uv.lock`. No `requirements.txt`.
+After changing the dependencies run `uv lock` and commit the updated `uv.lock`.
+On Colab: `uv pip install --system -r pyproject.toml` (cell 1.2).
 
 ---
 
@@ -208,7 +227,8 @@ uv run mypy src/
 ### Active Object Definition
 > "An active object is strictly defined as an object in direct contact with the hand in a given frame. Frames without active contact must be identified and handled accordingly."
 
-Implement in `src/data/dataset.py` → `_is_active_object()`.
+Implement in `src/data/dataset.py` -> `_is_active_object()`.
+`meta.yml` gives the grasped object of each sequence (`ycb_ids[ycb_grasp_ind]`); contact in each frame still has to be computed.
 
 ### Target Metrics (Table 2 Baseline)
 | Metric | Baseline | Target |
@@ -223,10 +243,10 @@ Implement in `src/data/dataset.py` → `_is_active_object()`.
 ---
 
 ## References
-- **HaMeR Paper** [9]: Reconstructing hands in 3d with transformers (CVPR 2024)
+- **HaMeR Paper** [9]: Reconstructing hands in 3d with transformers (CVPR 2024) - https://github.com/geopavlakos/hamer
 - **DexYCB Dataset** [2]: https://dex-ycb.github.io/
 - **Dataset Drive Link**: https://drive.google.com/file/d/1Ehh92wDE3CWAiKG7E9E73HjN2Xk2XfEk
-- **MANO Model** [11]: Embodied hands (requires registration)
+- **MANO Model** [11]: Embodied hands (requires registration) - https://mano.is.tue.mpg.de
 - **YCB Objects** [1]: https://www.ycbbenchmarks.com/
 
 ---

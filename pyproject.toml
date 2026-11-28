@@ -28,6 +28,7 @@ dependencies = [
     "pyrender>=0.1.45",
     "smplx>=0.1.28",
     "timm>=1.0.31",
+    "wandb>=0.17.0",
 ]
 
 [project.optional-dependencies]

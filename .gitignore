@@ -28,8 +28,17 @@ dataset/processed/
 # Checkpoints & logs (on Google Drive)
 checkpoints/
 logs/
+outputs/
+wandb/
 *.ckpt
 *.pth
+
+# Dataset archives and MANO model (on each member's Google Drive, never on GitHub)
+*.tar.gz
+*.zip
+_DATA/
+mano/
+MANO_*.pkl
 
 # OS/IDE
 .DS_Store

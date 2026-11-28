@@ -4,15 +4,41 @@
 seed: 42
 device: "cuda"
 
-# === PATHS (resolved via env vars in Colab) ===
+# === PATHS ===
+# Every team member works on their OWN Google Drive: everything that must survive
+# a Colab session lives in MyDrive/HOI_Project (created by main.ipynb).
+# The dataset is extracted on the Colab local disk (fast I/O), never read
+# file-by-file from Drive.
 project_root: "."
-data_root: "./dataset/raw"
-checkpoint_dir: "/content/drive/MyDrive/HOI_Project/checkpoints"
-log_dir: "/content/drive/MyDrive/HOI_Project/logs"
+drive_root: "/content/drive/MyDrive/HOI_Project"
+drive_dataset_dir: "${drive_root}/dataset"    # DexYCB .tar.gz archives (persistent copy)
+mano_dir: "${drive_root}/mano"                # MANO_RIGHT.pkl / MANO_LEFT.pkl (licence: never on GitHub)
+checkpoint_dir: "${drive_root}/checkpoints"   # one sub-folder per model (train.*.checkpoint_subdir)
+log_dir: "${drive_root}/logs"
+output_dir: "${drive_root}/outputs"           # figures and tables for the report
+data_root: "/content/dexycb"                  # local extraction folder on the Colab VM
 
-# === DATASET ===
-# Drive file ID hardcoded (no env var needed)
-dexycb_drive_file_id: "1Ehh92wDE3CWAiKG7E9E73HjN2Xk2XfEk"
+# === DATASET: DexYCB, official files (https://dex-ycb.github.io/) ===
+# Downloaded ONCE into drive_dataset_dir by scripts/download_dataset.py,
+# then copied and extracted into data_root at every Colab session.
+dexycb:
+  subject: "20200709-subject-01"    # 1 subject out of 10 = the 10% subset of the project
+  files:
+    subject:
+      name: "20200709-subject-01.tar.gz"   # ~12.4 GB: images, depth, labels, meta.yml
+      drive_id: "1Ehh92wDE3CWAiKG7E9E73HjN2Xk2XfEk"
+    calibration:
+      name: "calibration.tar.gz"           # ~16 KB: camera intrinsics/extrinsics, MANO betas
+      drive_id: "1UAwVKT4Rgb1fLcFoa1o71_-0NtSvvLAQ"
+    models:
+      name: "models.tar.gz"                # ~1.4 GB: YCB object meshes (ADD, PD, rendering)
+      drive_id: "1cAzlQBpcTatI5ykYQ8ziQiHLUG_a_UpM"
+
+# === EXPERIMENT TRACKING: Weights & Biases ===
+wandb:
+  project: "hoi-dexycb"
+  entity: null        # W&B team name (null = your personal account)
+  mode: "online"      # "offline" to log locally, "disabled" to turn it off
 
 # === DATA ===
 data:
@@ -33,6 +59,7 @@ data:
     blur_sigma: [0.1, 2.0]
 
 # === MODEL: HaMeR ===
+# NOTE: to be replaced by the official pretrained HaMeR (github.com/geopavlakos/hamer)
 hamer:
   backbone: "vit_base_patch16_224"
   mano_params: 48
@@ -51,8 +78,11 @@ hoi:
   num_object_classes: 20
 
 # === TRAINING ===
+# Each model saves its checkpoints in ${checkpoint_dir}/<checkpoint_subdir>,
+# so resuming one model never picks up the checkpoints of another.
 train:
   hamer:
+    checkpoint_subdir: "hamer_finetuned"
     epochs: 50
     lr: 1.0e-4
     weight_decay: 1.0e-5
@@ -62,8 +92,9 @@ train:
     grad_accum_steps: 1
     save_every: 5
     clip_grad_norm: 1.0
-  
+
   hoi:
+    checkpoint_subdir: "hoi_model"
     epochs: 100
     lr: 5.0e-5
     weight_decay: 1.0e-5

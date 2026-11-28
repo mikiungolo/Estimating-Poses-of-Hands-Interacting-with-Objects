@@ -32,7 +32,17 @@ class Trainer:
         config: DictConfig,
         device: torch.device,
         compute_metrics_fn: Callable = None,
+        checkpoint_dir: str | None = None,
+        train_cfg: DictConfig | None = None,
     ):
+        """
+        Args:
+            checkpoint_dir: where THIS model saves/resumes its checkpoints, e.g.
+                f"{config.checkpoint_dir}/{config.train.hoi.checkpoint_subdir}".
+                One folder per model, so a run never resumes from another model.
+            train_cfg: training section of this model, e.g. config.train.hoi
+                (config.train holds one sub-section per model).
+        """
         self.model = model
         self.train_loader = train_loader
         self.val_loader = val_loader
@@ -42,11 +52,12 @@ class Trainer:
         self.device = device
         self.compute_metrics_fn = compute_metrics_fn
 
-        self.scaler = torch.cuda.amp.GradScaler(enabled=config.train.get("mixed_precision", True))
-        self.grad_accum_steps = config.train.get("grad_accum_steps", 1)
+        self.train_cfg = train_cfg if train_cfg is not None else config.train
+        self.scaler = torch.cuda.amp.GradScaler(enabled=self.train_cfg.get("mixed_precision", True))
+        self.grad_accum_steps = self.train_cfg.get("grad_accum_steps", 1)
 
-        self.checkpoint_dir = config.checkpoint_dir
-        self.save_every = config.train.get("save_every", 5)
+        self.checkpoint_dir = checkpoint_dir or config.checkpoint_dir
+        self.save_every = self.train_cfg.get("save_every", 5)
 
         self.start_epoch, _ = resume_from_checkpoint(
             self.checkpoint_dir, model, optimizer
